@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-kubernetes-agent
+
+# Placeholder for future Kubernetes configuration
+kubernetes:
+  config-path: ${KUBECONFIG_PATH:~/.kube/config}
+
+# Placeholder for OpenRouter AI integration
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:anthropic/claude-3-sonnet}
+
+# Placeholder for InsForge integration
+insforge:
+  api-key: ${INSFORGE_API_KEY:}
+  api-base-url: ${INSFORGE_API_BASE_URL:}
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.k8s.agent: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
