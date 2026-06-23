@@ -5,9 +5,25 @@ spring:
   application:
     name: ai-kubernetes-agent
 
-# Placeholder for future Kubernetes configuration
+# Kubernetes configuration
 kubernetes:
   config-path: ${KUBECONFIG_PATH:~/.kube/config}
+  # Connection timeouts (in seconds)
+  connection-timeout: 30
+  read-timeout: 60
+  # Investigation settings
+  investigation:
+    # Maximum number of log lines to collect per pod
+    max-log-lines: 100
+    # Time window for event analysis (in hours)
+    event-analysis-window-hours: 1
+    # Enable/disable investigation components
+    enabled:
+      pod-inspection: true
+      logs-collection: true
+      events-analysis: true
+      deployment-inspection: true
+      network-inspection: true
 
 # Placeholder for OpenRouter AI integration
 openrouter:
