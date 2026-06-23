@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Java 21
-- Gradle 9.2.0
+- Gradle 8.7+ (compatible with Spring Boot 3.3.0)
 - Node.js 18+
 - Docker & Docker Compose
 
@@ -20,13 +20,13 @@ docker compose up --build
 
 ## Manual Build
 
-### Backend (Spring Boot with Gradle 9.2.0)
+### Backend (Spring Boot with Gradle 8.7)
 
 ```bash
 cd backend
 
 # Initialize Gradle wrapper (first time only)
-gradle wrapper --gradle-version 9.2.0
+gradle wrapper --gradle-version 8.7
 
 # Build
 ./gradlew clean build
@@ -35,7 +35,7 @@ gradle wrapper --gradle-version 9.2.0
 ./gradlew bootRun
 
 # Or run JAR directly
-java -jar build/libs/ai-kubernetes-agent-1.0.0.jar
+java -jar build/libs/k8s-agent.jar
 ```
 
 ### Frontend (React with Vite)
@@ -109,3 +109,31 @@ docker compose logs -f
 
 # Stop services
 docker compose down
+```
+
+## Troubleshooting
+
+### Gradle Build Issues
+If you encounter Gradle compatibility issues:
+- Ensure you're using Gradle 8.7 (compatible with Spring Boot 3.3.0)
+- Docker build uses `gradle:8.7-jdk21-alpine` image
+- Clear Gradle cache: `./gradlew clean --no-daemon`
+
+### Port Conflicts
+If ports 3000 or 8080 are in use:
+```bash
+# Check what's using the port
+netstat -ano | findstr :8080
+netstat -ano | findstr :3000
+
+# Modify docker-compose.yml to use different ports
+```
+
+### Docker Build Fails
+```bash
+# Clean Docker cache
+docker system prune -a
+
+# Rebuild without cache
+docker compose build --no-cache
+```
