@@ -3,8 +3,10 @@
 - ✅ **Prompt 01**: Project Setup - COMPLETE
 - ✅ **Prompt 02**: Kubernetes Investigation Engine - COMPLETE & TESTED
 - ✅ **Prompt 03**: AI Reasoning Engine - COMPLETE & TESTED
-- ⏳ **Prompt 04**: InsForge Backend Integration - PENDING
+- ✅ **Prompt 04**: Authentication & Database - COMPLETE
 - ⏳ **Prompt 05**: End-to-End Integration - PENDING
+
+> **Note:** This project originally planned to use InsForge but was implemented with Spring Boot + PostgreSQL instead. See [IMPLEMENTATION_NOTES.md](./IMPLEMENTATION_NOTES.md) and [INSFORGE_CLEANUP_SUMMARY.md](./INSFORGE_CLEANUP_SUMMARY.md) for details.
 
 # AI Kubernetes Troubleshooting Agent
 
@@ -21,7 +23,7 @@ Kubernetes Investigation Layer
     ↓
 AI Kubernetes Agent
     ↓
-LLM Reasoning (OpenRouter via InsForge)
+LLM Reasoning (OpenRouter)
     ↓
 Root Cause + Suggested Fix
 ```
@@ -32,6 +34,9 @@ Root Cause + Suggested Fix
 - **Spring Boot 3.3+** - Application framework
 - **Java 21** - Programming language
 - **Gradle 8.x** - Build tool
+- **Spring Security** - Authentication & Authorization
+- **Spring Data JPA** - Database access
+- **PostgreSQL** - Database
 - **Spring Web** - REST APIs
 - **Spring Boot Actuator** - Health checks
 - **Lombok** - Reduce boilerplate
@@ -44,10 +49,13 @@ Root Cause + Suggested Fix
 - **Tailwind CSS** - Styling
 - **Axios** - HTTP client
 - **TanStack Query** - Data fetching
+- **Zustand** - State management
+- **React Router** - Routing
 
 ### Infrastructure
 - **Docker** - Containerization
 - **Docker Compose** - Multi-container orchestration
+- **PostgreSQL 15** - Database
 
 ## Project Structure
 
@@ -58,11 +66,13 @@ AI-Kubernetes-Agent/
 │   │   ├── main/
 │   │   │   ├── java/com/k8s/agent/
 │   │   │   │   ├── K8sAgentApplication.java
-│   │   │   │   ├── config/
-│   │   │   │   ├── controller/
-│   │   │   │   ├── service/
-│   │   │   │   ├── model/
-│   │   │   │   └── repository/
+│   │   │   │   ├── config/         # Security, CORS, App config
+│   │   │   │   ├── controller/     # REST endpoints
+│   │   │   │   ├── service/        # Business logic
+│   │   │   │   ├── entity/         # JPA entities
+│   │   │   │   ├── repository/     # Data access
+│   │   │   │   ├── dto/            # Data transfer objects
+│   │   │   │   └── security/       # JWT filters
 │   │   │   └── resources/
 │   │   │       └── application.yml
 │   │   └── test/
@@ -72,16 +82,17 @@ AI-Kubernetes-Agent/
 │
 ├── frontend/                   # React Application
 │   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   ├── hooks/
-│   │   ├── types/
+│   │   ├── components/         # UI components
+│   │   ├── services/           # API services
+│   │   ├── store/              # State management
+│   │   ├── types/              # TypeScript types
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   ├── package.json
 │   └── Dockerfile
 │
 ├── docker-compose.yml
+├── BUILD.md                    # Detailed build instructions
 └── README.md
 ```
 
@@ -92,118 +103,122 @@ AI-Kubernetes-Agent/
 - **Java 21** or higher
 - **Gradle 8.x** (or use included Gradle wrapper)
 - **Node.js 18+** and npm
-- **Docker** and Docker Compose (optional)
+- **Docker** and Docker Compose
+- **kubectl** configured with a Kubernetes cluster
 
-### Option 1: Using Docker Compose (Recommended)
+### Quick Start
 
-```bash
-# Build and start all services
-docker compose up --build
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8080/api/v1/health
-# Backend Health: http://localhost:8080/actuator/health
-```
-
-### Option 2: Manual Setup
-
-#### Backend
+See [BUILD.md](./BUILD.md) for comprehensive setup instructions.
 
 ```bash
+# 1. Start PostgreSQL
+docker compose up -d postgres
+
+# 2. Setup backend environment
 cd backend
+cp .env.example .env
+# Edit .env with your credentials
 
-# Run with Gradle wrapper
+# 3. Start backend
 ./gradlew bootRun
 
-# Or build JAR and run
-./gradlew bootJar
-java -jar build/libs/*.jar
-
-# Or use system Gradle
-gradle bootRun
-```
-
-Backend will be available at `http://localhost:8080`
-
-#### Frontend
-
-```bash
+# 4. Setup frontend (in new terminal)
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
-```
 
-Frontend will be available at `http://localhost:5173`
+# 5. Access the application
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8080
+```
 
 ## API Endpoints
 
-### Health Check
+### Authentication (Public)
 ```
-GET /api/v1/health
-GET /actuator/health
-```
-
-Response:
-```json
-{
-  "status": "UP",
-  "service": "ai-kubernetes-agent",
-  "timestamp": "2024-01-01T00:00:00.000Z"
-}
+POST /api/v1/auth/register    # Register new user
+POST /api/v1/auth/login       # Login
+GET  /api/v1/auth/validate    # Validate JWT token
 ```
 
-### Kubernetes Investigation
-
-#### Comprehensive Investigation
+### Health Check (Public)
 ```
-POST /api/v1/investigate
-```
-
-Performs full cluster investigation including:
-- Pod health inspection
-- Log collection from problematic pods
-- Kubernetes events analysis
-- Deployment status checks
-- Network and service validation
-
-Response:
-```json
-{
-  "success": true,
-  "message": "Cluster investigation complete",
-  "data": {
-    "timestamp": "2024-01-15T10:30:00",
-    "clusterHealthy": false,
-    "investigationDurationSeconds": 12,
-    "podInspection": { ... },
-    "logsCollection": { ... },
-    "eventsAnalysis": { ... },
-    "deploymentInspection": { ... },
-    "networkInspection": { ... }
-  }
-}
+GET /actuator/health          # Spring Boot health
+GET /api/v1/investigate/health # Investigation service health
 ```
 
-#### Quick Health Check
+### Kubernetes Investigation (Protected - Requires JWT)
 ```
-GET /api/v1/investigate/quick
-```
-
-Performs quick health check (pods and events only) for faster response.
-
-#### Investigation Service Health
-```
-GET /api/v1/investigate/health
+POST /api/v1/investigate              # Full cluster investigation
+GET  /api/v1/investigate/history      # Get investigation history
+GET  /api/v1/investigate/history/{id} # Get specific investigation
 ```
 
-Check if the investigation service is operational.
+## Environment Variables
 
-**See [KUBERNETES_SETUP.md](./KUBERNETES_SETUP.md) for detailed setup and usage instructions.**
+### Backend (.env)
+```bash
+# Database
+DATABASE_URL=jdbc:postgresql://localhost:5432/k8s_agent
+DATABASE_USERNAME=k8s_user
+DATABASE_PASSWORD=k8s_password
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRATION=86400000
+
+# OpenRouter AI
+OPENROUTER_API_KEY=your-openrouter-api-key
+OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+
+# Kubernetes
+KUBECONFIG_PATH=/path/to/your/kubeconfig
+```
+
+### Frontend (.env.local)
+```bash
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+## Features
+
+### Completed
+- ✅ Health check endpoints
+- ✅ Kubernetes cluster investigation
+- ✅ Pod inspection and failure detection
+- ✅ Log collection from problematic pods
+- ✅ Kubernetes events analysis
+- ✅ Deployment status inspection
+- ✅ Network and service validation
+- ✅ AI-powered root cause analysis
+- ✅ Fix recommendations using LLM
+- ✅ User authentication (JWT)
+- ✅ User registration and login
+- ✅ Protected API endpoints
+- ✅ PostgreSQL database integration
+- ✅ Investigation history storage
+- ✅ Frontend authentication UI
+- ✅ Docker multi-stage builds
+- ✅ Docker Compose orchestration
+
+### Planned (Prompt 05)
+- ⏳ Real-time investigation updates (WebSocket)
+- ⏳ Investigation dashboard UI enhancements
+- ⏳ Investigation result visualization
+- ⏳ End-to-end testing
+
+## Supported Kubernetes Problems
+
+- CrashLoopBackOff
+- ImagePullBackOff
+- OOMKilled
+- Pending Pods
+- Resource Exhaustion
+- Deployment Rollout Failures
+- Service Selector Mismatch
+- DNS Resolution Problems
+- Readiness/Liveness Probe Failures
+- Networking Issues
 
 ## Development
 
@@ -243,108 +258,19 @@ npm run preview
 npm run lint
 ```
 
-## Environment Variables
+## Security
 
-### Backend (.env or application.yml)
-```yaml
-KUBECONFIG_PATH=~/.kube/config
-OPENROUTER_API_KEY=your-api-key
-OPENROUTER_MODEL=anthropic/claude-3-sonnet
-INSFORGE_API_KEY=your-insforge-key
-INSFORGE_API_BASE_URL=https://your-project.insforge.app
-```
-
-### Frontend (.env)
-```
-VITE_API_BASE_URL=http://localhost:8080
-VITE_WS_URL=ws://localhost:8080/ws
-```
-
-## Features
-
-### Completed (Prompt 01 & 02)
-- ✅ Health check endpoints
-- ✅ Kubernetes cluster investigation
-- ✅ Pod inspection and failure detection
-- ✅ Log collection from problematic pods
-- ✅ Kubernetes events analysis
-- ✅ Deployment status inspection
-- ✅ Network and service validation
-- ✅ Comprehensive investigation orchestration
-- ✅ REST API endpoints for investigation
-- ✅ Frontend TypeScript types
-- ✅ Docker multi-stage builds
-- ✅ Docker Compose orchestration
-
-### Planned (Prompt 03+)
-- ⏳ AI-powered root cause analysis
-- ⏳ Fix recommendations using LLM
-- ⏳ Investigation history storage
-- ⏳ Real-time investigation updates
-- ⏳ InsForge backend integration
-- ⏳ User authentication
-- ⏳ Investigation dashboard UI
-
-## Supported Kubernetes Problems
-
-- CrashLoopBackOff
-- ImagePullBackOff
-- OOMKilled
-- Pending Pods
-- Resource Exhaustion
-- Deployment Rollout Failures
-- Service Selector Mismatch
-- DNS Resolution Problems
-- Readiness/Liveness Probe Failures
-- Networking Issues
-
-## Implementation Progress
-
-### ✅ Prompt 01: Project Setup (Completed)
-- Spring Boot 3.3.0 backend with Java 21
-- React 18 frontend with TypeScript and Vite
-- Docker multi-stage builds
-- Docker Compose orchestration
-- Health check endpoints
-- CORS configuration
-
-### ✅ Prompt 02: Kubernetes Investigation Engine (Completed)
-- **Kubernetes Java Client Integration** - Official client library v19.0.0
-- **Pod Inspector Service** - Detects CrashLoopBackOff, ImagePullBackOff, OOMKilled, Pending pods
-- **Logs Collector Service** - Collects and filters logs for error patterns
-- **Events Analyzer Service** - Analyzes Kubernetes events for critical issues
-- **Deployment Inspector Service** - Checks deployment health and replica status
-- **Network Inspector Service** - Validates services and endpoints
-- **Investigation Orchestrator** - Coordinates all investigation components
-- **REST API Endpoints** - Full and quick investigation endpoints
-- **Global Exception Handler** - Centralized error handling
-- **Frontend Types** - Complete TypeScript definitions
-- **Configuration** - Kubernetes settings in application.yml
-- **Documentation** - Comprehensive setup guide (KUBERNETES_SETUP.md)
-
-### ⏳ Prompt 03: AI Reasoning Engine (Pending)
-- LLM integration via OpenRouter
-- Root cause analysis
-- Fix recommendations
-- Confidence scoring
-
-### ⏳ Prompt 04: InsForge Backend (Pending)
-- Authentication
-- Investigation history storage
-- Real-time updates
-- API layer
-
-### ⏳ Prompt 05: End-to-End Integration (Pending)
-- Frontend dashboard
-- Investigation UI
-- Real-time progress
-- Deployment
+- **Authentication**: JWT-based stateless authentication
+- **Password Hashing**: BCrypt with salt
+- **CORS**: Configured for frontend origin
+- **Protected Routes**: All investigation endpoints require authentication
+- **Token Expiration**: Configurable (default 24 hours)
 
 ## Documentation
 
-- **[BUILD.md](./BUILD.md)** - Build and deployment instructions
-- **[KUBERNETES_SETUP.md](./KUBERNETES_SETUP.md)** - Kubernetes investigation setup guide
-- **[README.md](./README.md)** - This file
+- [BUILD.md](./BUILD.md) - Comprehensive build and deployment guide
+- [ENV_GUIDE.md](./ENV_GUIDE.md) - Environment variables guide
+- [KUBERNETES_SETUP.md](./KUBERNETES_SETUP.md) - Kubernetes setup instructions
 
 ## License
 
@@ -353,3 +279,7 @@ Apache License 2.0
 ## Contributing
 
 Contributions are welcome! Please read the contributing guidelines before submitting PRs.
+
+---
+
+**Built with ❤️ using Spring Boot, React, and PostgreSQL**

@@ -4,6 +4,23 @@ server:
 spring:
   application:
     name: ai-kubernetes-agent
+  
+  # Database configuration (Local PostgreSQL)
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/k8s_agent}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  
+  # JPA/Hibernate configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
 
 # Kubernetes configuration
 kubernetes:
@@ -42,10 +59,10 @@ openrouter:
   # Enable/disable AI diagnosis (fallback to investigation-only if disabled)
   enabled: ${OPENROUTER_ENABLED:true}
 
-# Placeholder for InsForge integration
-insforge:
-  api-key: ${INSFORGE_API_KEY:}
-  api-base-url: ${INSFORGE_API_BASE_URL:}
+# JWT configuration for local authentication
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-min-256-bits-change-in-production-please-use-strong-secret}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 # Logging configuration
 logging:

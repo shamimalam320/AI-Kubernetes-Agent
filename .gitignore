@@ -7,13 +7,24 @@ Thumbs.db
 .idea/
 *.iml
 
-# Environment variables
+# Environment variables (keep .env.example for reference)
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Logs
 *.log
+
+# Documentation (generated summaries)
+KUBERNETES_SETUP.md
+ENV_GUIDE.md
+BUILD.md
+IMPLEMENTATION_NOTES.md
+INSFORGE_CLEANUP_SUMMARY.md
+PROMPT_02_SUMMARY.md
+PROMPT_03_SUMMARY.md
+PROMPT_04_SUMMARY.md
 
 # Backend (Gradle/Java)
 backend/.gradle/

@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: k8s-agent-postgres
+    environment:
+      - POSTGRES_DB=k8s_agent
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - k8s-agent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
     container_name: k8s-agent-backend
@@ -7,8 +26,16 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - KUBECONFIG_PATH=/root/.kube/config
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/k8s_agent
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - JWT_SECRET=your-secret-key-min-256-bits-change-in-production-please-use-strong-secret-key-here
+      - JWT_EXPIRATION=86400000
     volumes:
       - ~/.kube/config:/root/.kube/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - k8s-agent-network
     healthcheck:
@@ -32,4 +59,8 @@ services:
 networks:
   k8s-agent-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
 

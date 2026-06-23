@@ -1,0 +1,100 @@
+package com.k8s.agent.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * User entity for authentication and authorization.
+ * Implements Spring Security UserDetails for integration with Spring Security.
+ */
+@Entity
+@Table(name = "users")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class User implements UserDetails {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String username;
+    
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+    
+    @Column(nullable = false)
+    private String password;
+    
+    @Column(nullable = false, length = 50)
+    @Builder.Default
+    private String role = "USER";
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean enabled = true;
+    
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // UserDetails implementation
+    
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+    }
+    
+    @Override
+    public String getPassword() {
+        return password;
+    }
+    
+    @Override
+    public String getUsername() {
+        return username;
+    }
+    
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+    
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+    
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+}
+
+// Made with Bob

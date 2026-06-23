@@ -1,25 +1,29 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { checkHealth, investigateCluster } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { apiService } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 /**
  * Main dashboard component for the AI Kubernetes Agent
  */
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { username, email, logout } = useAuthStore();
   const [investigating, setInvestigating] = useState(false);
 
   // Query backend health status
   const { data: health, isLoading } = useQuery({
     queryKey: ['health'],
-    queryFn: checkHealth,
+    queryFn: apiService.healthCheck,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const handleInvestigate = async () => {
     setInvestigating(true);
     try {
-      await investigateCluster();
-      // TODO: Handle investigation result in prompt 02
+      const response = await apiService.investigate();
+      console.log('Investigation complete:', response);
     } catch (error) {
       console.error('Investigation failed:', error);
     } finally {
@@ -27,18 +31,37 @@ export default function Dashboard() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">
-              AI Kubernetes Agent
-            </h1>
-            <p className="text-gray-300 text-lg">
-              Troubleshoot Kubernetes with AI
-            </p>
+          {/* Header with User Info */}
+          <div className="flex justify-between items-start mb-8">
+            <div className="text-center flex-1">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                AI Kubernetes Agent
+              </h1>
+              <p className="text-gray-300 text-lg">
+                Troubleshoot Kubernetes with AI
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-300 mb-2">
+                <div className="font-semibold">{username}</div>
+                <div className="text-gray-400 text-xs">{email}</div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Status */}
@@ -47,7 +70,7 @@ export default function Dashboard() {
               <span className="text-gray-300">System Status:</span>
               {isLoading ? (
                 <span className="text-yellow-400">Checking...</span>
-              ) : health?.status === 'UP' ? (
+              ) : health === 'OK' ? (
                 <span className="text-green-400 flex items-center">
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
                   Ready
@@ -89,3 +112,4 @@ export default function Dashboard() {
   );
 }
 
+// Made with Bob

@@ -3,16 +3,24 @@ package com.k8s.agent.controller;
 import com.k8s.agent.dto.ai.InvestigationResponse;
 import com.k8s.agent.dto.common.ApiResponse;
 import com.k8s.agent.dto.investigation.InvestigationResult;
+import com.k8s.agent.entity.Investigation;
 import com.k8s.agent.service.ai.AIService;
+import com.k8s.agent.service.history.InvestigationHistoryService;
 import com.k8s.agent.service.investigation.InvestigationService;
+import com.k8s.agent.service.websocket.InvestigationProgressService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for Kubernetes cluster investigation endpoints.
  * Provides both raw investigation data and AI-powered diagnosis.
+ * Includes authentication, history management, and real-time progress updates.
  */
 @Slf4j
 @RestController
@@ -22,27 +30,45 @@ public class InvestigationController {
 
     private final InvestigationService investigationService;
     private final AIService aiService;
+    private final InvestigationHistoryService historyService;
+    private final InvestigationProgressService progressService;
 
     /**
      * Performs a comprehensive investigation with AI-powered diagnosis.
      * This is the main endpoint that combines investigation and AI analysis.
+     * Requires authentication and saves results to history.
      *
+     * @param userId Authenticated user ID
      * @return Investigation results with AI diagnosis
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<InvestigationResponse>> investigate() {
-        log.info("Received request to investigate Kubernetes cluster with AI diagnosis");
+    public ResponseEntity<ApiResponse<InvestigationResponse>> investigate(
+            @AuthenticationPrincipal String userId) {
+        log.info("Received investigation request from user: {}", userId);
         
         try {
-            // Step 1: Perform investigation
+            // Send start notification
+            progressService.sendInvestigationStarted(userId);
+            
+            // Step 1: Perform investigation with progress updates
+            progressService.sendProgress(userId, "Checking Pods", "IN_PROGRESS");
             InvestigationResult investigation = investigationService.investigate();
+            progressService.sendProgress(userId, "Investigation Complete", "COMPLETED");
             
             // Step 2: Get AI diagnosis
+            progressService.sendProgress(userId, "AI Reasoning", "IN_PROGRESS");
             InvestigationResponse response = aiService.diagnose(investigation);
+            progressService.sendProgress(userId, "AI Reasoning", "COMPLETED");
+            
+            // Step 3: Save to history
+            historyService.saveInvestigation(userId, response);
+            
+            // Send completion notification
+            progressService.sendInvestigationCompleted(userId);
             
             String message = buildResponseMessage(response);
             
-            log.info("Investigation with AI diagnosis completed. Status: {}", response.getStatus());
+            log.info("Investigation completed for user: {}. Status: {}", userId, response.getStatus());
             
             return ResponseEntity.ok(
                 ApiResponse.<InvestigationResponse>builder()
@@ -53,7 +79,8 @@ public class InvestigationController {
             );
             
         } catch (Exception e) {
-            log.error("Investigation with AI diagnosis failed: {}", e.getMessage(), e);
+            log.error("Investigation failed for user: {}: {}", userId, e.getMessage(), e);
+            progressService.sendInvestigationFailed(userId, e.getMessage());
             
             return ResponseEntity.internalServerError().body(
                 ApiResponse.<InvestigationResponse>builder()
@@ -162,6 +189,75 @@ public class InvestigationController {
                 .data("OK")
                 .build()
         );
+    }
+
+    /**
+     * Get investigation history for authenticated user.
+     *
+     * @param userId Authenticated user ID
+     * @return List of recent investigations (max 10)
+     */
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<Investigation>>> getHistory(
+            @AuthenticationPrincipal String userId) {
+        log.info("Fetching investigation history for user: {}", userId);
+        
+        try {
+            List<Investigation> history = historyService.getUserInvestigations(userId);
+            
+            return ResponseEntity.ok(
+                ApiResponse.<List<Investigation>>builder()
+                    .success(true)
+                    .message("History retrieved successfully")
+                    .data(history)
+                    .build()
+            );
+        } catch (Exception e) {
+            log.error("Failed to fetch history for user: {}", userId, e);
+            
+            return ResponseEntity.internalServerError().body(
+                ApiResponse.<List<Investigation>>builder()
+                    .success(false)
+                    .message("Failed to fetch history: " + e.getMessage())
+                    .build()
+            );
+        }
+    }
+    
+    /**
+     * Get specific investigation by ID for authenticated user.
+     *
+     * @param id Investigation ID
+     * @param userId Authenticated user ID
+     * @return Investigation details
+     */
+    @GetMapping("/history/{id}")
+    public ResponseEntity<ApiResponse<Investigation>> getInvestigation(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal String userId) {
+        log.info("Fetching investigation {} for user: {}", id, userId);
+        
+        try {
+            return historyService.getInvestigation(id, userId)
+                .map(investigation -> ResponseEntity.ok(
+                    ApiResponse.<Investigation>builder()
+                        .success(true)
+                        .message("Investigation retrieved successfully")
+                        .data(investigation)
+                        .build()
+                ))
+                .orElse(ResponseEntity.notFound().build());
+                
+        } catch (Exception e) {
+            log.error("Failed to fetch investigation {} for user: {}", id, userId, e);
+            
+            return ResponseEntity.internalServerError().body(
+                ApiResponse.<Investigation>builder()
+                    .success(false)
+                    .message("Failed to fetch investigation: " + e.getMessage())
+                    .build()
+            );
+        }
     }
 
     /**
