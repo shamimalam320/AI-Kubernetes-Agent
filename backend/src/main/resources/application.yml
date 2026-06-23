@@ -25,10 +25,22 @@ kubernetes:
       deployment-inspection: true
       network-inspection: true
 
-# Placeholder for OpenRouter AI integration
+# OpenRouter AI integration configuration
 openrouter:
+  # API key for OpenRouter (required)
   api-key: ${OPENROUTER_API_KEY:}
+  # Base URL for OpenRouter API
+  api-url: ${OPENROUTER_API_URL:https://openrouter.ai/api/v1/chat/completions}
+  # Default model to use for AI reasoning
   model: ${OPENROUTER_MODEL:anthropic/claude-3-sonnet}
+  # Temperature for response generation (0.0 - 2.0, lower = more focused)
+  temperature: ${OPENROUTER_TEMPERATURE:0.3}
+  # Maximum tokens to generate in response
+  max-tokens: ${OPENROUTER_MAX_TOKENS:2000}
+  # Request timeout in seconds
+  timeout: ${OPENROUTER_TIMEOUT:60}
+  # Enable/disable AI diagnosis (fallback to investigation-only if disabled)
+  enabled: ${OPENROUTER_ENABLED:true}
 
 # Placeholder for InsForge integration
 insforge:
